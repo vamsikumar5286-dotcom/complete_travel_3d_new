@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Cost Estimator 3D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #14b8a6;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-light: #334155;
+            --text-light: #f1f5f9;
+            --text-muted: #cbd5e1;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1f35 100%);
+            color: var(--text-light);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            min-height: 100vh;
+        }
+
+        /* Page Container with 3D perspective */
+        .page-container {
+            position: fixed;
+            width: 100%;
+            height: 100vh;
+            perspective: 1200px;
+        }
+
+        /* Page styles with 3D transforms */
+        .page {
+            position: absolute;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transform-origin: center;
+            transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            transform: rotateY(90deg) rotateX(10deg) scale(0.8);
+        }
+
+        .page.active {
+            opacity: 1;
+            visibility: visible;
+            transform: rotateY(0deg) rotateX(0deg) scale(1);
+            z-index: 10;
+        }
+
+        .page.exit-left {
+            transform: rotateY(-90deg) rotateX(-10deg) scale(0.8);
+            opacity: 0;
+        }
+
+        .page.exit-right {
+            transform: rotateY(90deg) rotateX(10deg) scale(0.8);
+            opacity: 0;
+        }
+
+        /* 3D Card styles */
+        .card-3d {
+            background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-card-light) 100%);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 20px;
+            padding: 3rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
+            width: 90%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-3d::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        }
+
+        .card-3d::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at 30% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+        }
+
+        /* Animated gradient background */
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(-45deg, var(--primary), var(--secondary), var(--accent), var(--primary));
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            opacity: 0.05;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Input styles with glow */
+        .input-glow {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            color: var(--text-light);
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .input-glow:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+            transform: translateY(-2px);
+        }
+
+        /* Button with 3D effect */
+        .btn-3d {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 14px 32px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-3d::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn-3d:hover::before {
+            left: 100%;
+        }
+
+        .btn-3d:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-3d:active {
+            transform: translateY(-1px);
+        }
+
+        /* Select with glow */
+        select.input-glow {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 20px;
+            padding-right: 40px;
+        }
+
+        /* Title animation */
+        .title-3d {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--secondary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: titleFloat 3s ease-in-out infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes titleFloat {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Subtitle */
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Form group */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-light);
+            font-size: 0.95rem;
+        }
+
+        /* Results page styles */
+        .result-card {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(236, 72, 153, 0.1) 100%);
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 1.5rem 0;
+            text-align: center;
+            animation: slideInUp 0.6s ease-out;
+        }
+
+        .result-cost {
+            font-size: 3rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 1rem 0;
+        }
+
+        .result-label {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .breakdown-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .breakdown-item {
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            animation: slideInUp 0.6s ease-out;
+        }
+
+        .breakdown-item:nth-child(1) { animation-delay: 0.1s; }
+        .breakdown-item:nth-child(2) { animation-delay: 0.2s; }
+        .breakdown-item:nth-child(3) { animation-delay: 0.3s; }
+        .breakdown-item:nth-child(4) { animation-delay: 0.4s; }
+
+        .breakdown-item:hover {
+            background: rgba(30, 41, 59, 0.9);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);
+        }
+
+        .breakdown-label {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .breakdown-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(99, 102, 241, 0.3);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Hidden class */
+        .hidden {
+            display: none !important;
+        }
+
+        /* Floating elements background */
+        .floating-orb {
+            position: fixed;
+            border-radius: 50%;
+            opacity: 0.05;
+            pointer-events: none;
+        }
+
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: var(--primary);
+            top: -100px;
+            right: -100px;
+            animation: float 20s ease-in-out infinite;
+        }
+
+        .orb-2 {
+            width: 300px;
+            height: 300px;
+            background: var(--secondary);
+            bottom: -50px;
+            left: -100px;
+            animation: float 25s ease-in-out infinite reverse;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0); }
+            33% { transform: translate(30px, -30px); }
+            66% { transform: translate(-30px, 30px); }
+        }
+
+        /* Auth view specific */
+        .auth-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .auth-buttons .btn-3d {
+            flex: 1;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(148, 163, 184, 0.3) 100%);
+            border: 1px solid rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.5) 0%, rgba(148, 163, 184, 0.5) 100%);
+        }
+
+        /* Back button */
+        .btn-back {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            color: var(--text-light);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 20;
+        }
+
+        .btn-back:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            transform: scale(1.1);
+        }
+
+        .btn-back.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated background -->
+    <div class="animated-bg"></div>
+
+    <!-- Floating orbs -->
+    <div class="floating-orb orb-1"></div>
+    <div class="floating-orb orb-2"></div>
+
+    <!-- Back button -->
+    <button class="btn-back hidden" id="backBtn">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+    </button>
+
+    <!-- Page container -->
+    <div class="page-container">
+        <!-- Auth Page -->
+        <div id="authPage" class="page active">
+            <div class="card-3d">
+                <h1 class="title-3d">Travel Estimator</h1>
+                <p class="subtitle">Login or create an account to get started</p>
+
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" id="authEmail" placeholder="your@email.com" class="input-glow w-full">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" id="authPassword" placeholder="••••••••" class="input-glow w-full">
+                </div>
+
+                <div id="authMessage" class="hidden p-3 rounded-lg text-sm mb-4" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3);"></div>
+
+                <div class="auth-buttons">
+                    <button id="loginBtn" class="btn-3d flex-1">Login</button>
+                    <button id="signupBtn" class="btn-3d btn-secondary flex-1">Sign Up</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estimation Page -->
+        <div id="estimationPage" class="page">
+            <div class="card-3d">
+                <h1 class="title-3d">Plan Your Trip</h1>
+                <p class="subtitle">Enter your travel details to estimate costs</p>
+
+                <div style="max-height: 65vh; overflow-y: auto; padding-right: 1rem;">
+                    <div class="form-group">
+                        <label class="form-label">Start Location</label>
+                        <input type="text" id="startLocation" placeholder="e.g., Mumbai" class="input-glow w-full" value="Mumbai">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Destination</label>
+                        <input type="text" id="destination" placeholder="e.g., Goa" class="input-glow w-full" value="Goa">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Country</label>
+                        <input type="text" id="country" placeholder="e.g., India" class="input-glow w-full" value="India">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Transportation Type</label>
+                        <select id="transportType" class="input-glow w-full">
+                            <option value="">Select Type</option>
+                            <option value="Train">Train</option>
+                            <option value="Bus">Bus</option>
+                            <option value="Flight">Flight</option>
+                        </select>
+                    </div>
+
+                    <div id="trainClassContainer" class="form-group hidden">
+                        <label class="form-label">Train Class</label>
+                        <select id="trainClass" class="input-glow w-full">
+                            <option value="">Loading classes...</option>
+                        </select>
+                    </div>
+
+                    <div id="busTypeContainer" class="form-group hidden">
+                        <label class="form-label">Bus Type</label>
+                        <select id="busType" class="input-glow w-full">
+                            <option value="">Loading bus types...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Distance (km)</label>
+                        <input type="number" id="distanceKm" placeholder="e.g., 500" class="input-glow w-full" value="500" min="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Number of Days</label>
+                        <input type="number" id="numberOfDays" placeholder="e.g., 7" class="input-glow w-full" value="7" min="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Accommodation Type</label>
+                        <select id="accommodationType" class="input-glow w-full">
+                            <option value="">Select Type</option>
+                            <option value="Hostel">Hostel (Budget)</option>
+                            <option value="3Star">3-Star Hotel</option>
+                            <option value="4Star">4-Star Hotel</option>
+                            <option value="5Star">5-Star Hotel</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Food Preference</label>
+                        <select id="foodPreference" class="input-glow w-full">
+                            <option value="">Select Option</option>
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Activity Preference</label>
+                        <select id="activityPreference" class="input-glow w-full">
+                            <option value="">Select Option</option>
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button id="estimateBtn" class="btn-3d w-full mt-6">Calculate Estimate</button>
+            </div>
+        </div>
+
+        <!-- Results Page -->
+        <div id="resultsPage" class="page">
+            <div class="card-3d">
+                <h1 class="title-3d">Trip Cost Breakdown</h1>
+
+                <div class="result-card">
+                    <p class="result-label">Estimated Total Cost</p>
+                    <div class="result-cost" id="totalCost">₹0.00</div>
+                    <p class="result-label" id="resultMessage">Calculating...</p>
+                </div>
+
+                <div class="breakdown-grid">
+                    <div class="breakdown-item">
+                        <p class="breakdown-label">Accommodation</p>
+                        <p class="breakdown-value" id="breakdownAccommodation">₹0.00</p>
+                    </div>
+                    <div class="breakdown-item">
+                        <p class="breakdown-label">Transportation</p>
+                        <p class="breakdown-value" id="breakdownTransportation">₹0.00</p>
+                    </div>
+                    <div class="breakdown-item">
+                        <p class="breakdown-label">Food</p>
+                        <p class="breakdown-value" id="breakdownFood">₹0.00</p>
+                    </div>
+                    <div class="breakdown-item">
+                        <p class="breakdown-label">Activity</p>
+                        <p class="breakdown-value" id="breakdownActivity">₹0.00</p>
+                    </div>
+                </div>
+
+                <button id="recalculateBtn" class="btn-3d w-full mt-8">Calculate Another Trip</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Page management
+        const pages = {
+            auth: document.getElementById('authPage'),
+            estimation: document.getElementById('estimationPage'),
+            results: document.getElementById('resultsPage')
+        };
+
+        const backBtn = document.getElementById('backBtn');
+        let currentPage = 'auth';
+
+        function showPage(pageName, direction = 'forward') {
+            const oldPage = pages[currentPage];
+            const newPage = pages[pageName];
+
+            if (oldPage === newPage) return;
+
+            // Exit animation
+            oldPage.classList.remove('active');
+            oldPage.classList.add(direction === 'forward' ? 'exit-left' : 'exit-right');
+
+            // Enter animation
+            setTimeout(() => {
+                oldPage.classList.remove('exit-left', 'exit-right');
+                newPage.classList.add('active');
+                currentPage = pageName;
+
+                // Show/hide back button
+                backBtn.classList.toggle('hidden', pageName === 'auth');
+            }, 400);
+        }
+
+        backBtn.addEventListener('click', () => {
+            if (currentPage === 'results') {
+                showPage('estimation', 'backward');
+            } else if (currentPage === 'estimation') {
+                showPage('auth', 'backward');
+            }
+        });
+
+        // Auth handlers
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+
+            if (!email || !password) {
+                showAuthMessage('Please enter email and password', true);
+                return;
+            }
+
+            showPage('estimation');
+        });
+
+        document.getElementById('signupBtn').addEventListener('click', () => {
+            const email = document.getElementById('authEmail').value;
+            const password = document.getElementById('authPassword').value;
+
+            if (!email || !password) {
+                showAuthMessage('Please enter email and password', true);
+                return;
+            }
+
+            showPage('estimation');
+        });
+
+        function showAuthMessage(msg, isError = false) {
+            const msgEl = document.getElementById('authMessage');
+            msgEl.textContent = msg;
+            msgEl.classList.remove('hidden');
+            msgEl.style.borderColor = isError ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)';
+            msgEl.style.background = isError ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)';
+            msgEl.style.color = isError ? '#ef4444' : '#22c55e';
+        }
+
+        // Train class loading
+        async function populateTrainClasses() {
+            try {
+                const res = await fetch('http://localhost:8000/train/classes');
+                const data = await res.json();
+                const select = document.getElementById('trainClass');
+                if (Array.isArray(data.train_classes)) {
+                    select.innerHTML = '<option value="">Select a class</option>';
+                    data.train_classes.forEach(cls => {
+                        select.innerHTML += `<option value="${cls}">${cls}</option>`;
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to load train classes:', err);
+            }
+        }
+
+        // Bus type loading
+        async function populateBusTypes() {
+            try {
+                const res = await fetch('http://localhost:8000/bus/types');
+                const data = await res.json();
+                const select = document.getElementById('busType');
+                if (Array.isArray(data.bus_types)) {
+                    select.innerHTML = '<option value="">Select a type</option>';
+                    data.bus_types.forEach(type => {
+                        select.innerHTML += `<option value="${type}">${type}</option>`;
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to load bus types:', err);
+            }
+        }
+
+        document.getElementById('transportType').addEventListener('change', (e) => {
+            const trainContainer = document.getElementById('trainClassContainer');
+            const busContainer = document.getElementById('busTypeContainer');
+            
+            if (e.target.value === 'Train') {
+                trainContainer.classList.remove('hidden');
+                busContainer.classList.add('hidden');
+                populateTrainClasses();
+            } else if (e.target.value === 'Bus') {
+                busContainer.classList.remove('hidden');
+                trainContainer.classList.add('hidden');
+                populateBusTypes();
+            } else {
+                trainContainer.classList.add('hidden');
+                busContainer.classList.add('hidden');
+            }
+        });
+
+        // Estimation handler
+        document.getElementById('estimateBtn').addEventListener('click', async () => {
+            const startLocation = document.getElementById('startLocation').value;
+            const destination = document.getElementById('destination').value;
+            const country = document.getElementById('country').value;
+            const transportType = document.getElementById('transportType').value;
+            const trainClass = document.getElementById('trainClass').value;
+            const busType = document.getElementById('busType').value;
+            const numberOfDays = parseInt(document.getElementById('numberOfDays').value);
+            const accommodationType = document.getElementById('accommodationType').value;
+            const foodPreference = document.getElementById('foodPreference').value;
+            const activityPreference = document.getElementById('activityPreference').value;
+            const distanceKm = parseFloat(document.getElementById('distanceKm').value);
+
+            if (!startLocation || !destination || !transportType || !accommodationType || !foodPreference || !activityPreference) {
+                alert('Please fill all required fields');
+                return;
+            }
+
+            if (transportType === 'Train' && !trainClass) {
+                alert('Please select a train class');
+                return;
+            }
+
+            if (transportType === 'Bus' && !busType) {
+                alert('Please select a bus type');
+                return;
+            }
+
+            const data = {
+                startLocation,
+                destination,
+                country,
+                transportType,
+                trainType: trainClass,
+                busType: busType,
+                numberOfDays,
+                accommodationType,
+                foodPreference,
+                activityPreference,
+                distanceKm
+            };
+
+            try {
+                const res = await fetch('http://localhost:8000/api/estimate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await res.json();
+
+                if (result.error) {
+                    alert('Error: ' + result.error);
+                    return;
+                }
+
+                // Show results
+                document.getElementById('totalCost').textContent = `₹${result.estimatedCost.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+                document.getElementById('breakdownAccommodation').textContent = `₹${result.breakdown.accommodation.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+                document.getElementById('breakdownTransportation').textContent = `₹${result.breakdown.transportation.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+                document.getElementById('breakdownFood').textContent = `₹${result.breakdown.food.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+                document.getElementById('breakdownActivity').textContent = `₹${result.breakdown.activity.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+                document.getElementById('resultMessage').textContent = result.message || 'Calculation successful!';
+
+                showPage('results');
+            } catch (err) {
+                alert('Failed to connect to backend: ' + err.message);
+            }
+        });
+
+        // Recalculate button
+        document.getElementById('recalculateBtn').addEventListener('click', () => {
+            showPage('estimation', 'backward');
+        });
+    </script>
+</body>
+</html>

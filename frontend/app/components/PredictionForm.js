@@ -22,18 +22,20 @@ export default function PredictionForm() {
 
     // Build request body including Country
     const requestBody = {
-      Start_Location: start,
-      Destination: destination,
-      Country: country,
-      Transport_Type: transport,
-      Train_Class: transport === "train" ? trainClass : null,
-      Duration_Days: Number(days),
-      Accommodation_Type: accommodation,
-      Distance_km: Number(distance),
+      startLocation: start,
+      destination: destination,
+      country: country,
+      transportType: transport,
+      trainType: transport === "train" ? trainClass : null,
+      numberOfDays: Number(days),
+      accommodationType: accommodation,
+      foodPreference: "Medium",
+      activityPreference: "Medium",
+      distanceKm: Number(distance),
     };
 
     try {
-      const response = await fetch("http://localhost:8000/predict", {
+      const response = await fetch("http://localhost:8000/api/estimate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -45,11 +47,15 @@ export default function PredictionForm() {
 
       const data = await response.json();
       setResult(`
-Transport Cost: ${data.Transport_Cost}
-Accommodation Cost: ${data.Accommodation_Cost}
-Food Cost: ${data.Food_Cost}
-Activity Cost: ${data.Activity_Cost}
-Total Expense: ${data.Total_Expense}
+Total Cost: ₹${data.estimatedCost} ${data.currency}
+
+Breakdown:
+• Accommodation: ₹${data.breakdown.accommodation}
+• Transportation: ₹${data.breakdown.transportation}
+• Food: ₹${data.breakdown.food}
+• Activities: ₹${data.breakdown.activity}
+
+${data.message}
       `);
     } catch (err) {
       setResult("Error: " + err.message);
